@@ -7,7 +7,6 @@ import torchvision.transforms as transforms
 from PIL import Image
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
-from torchvision.models import ResNet50_Weights
 
 # Flask setup
 app = Flask(__name__)
@@ -21,7 +20,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Load ResNet model and prepare feature extractor
-resnet = models.resnet50(weights=ResNet50_Weights.DEFAULT)
+resnet = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
 resnet.eval()
 feature_extractor = torch.nn.Sequential(*list(resnet.children())[:-1])
 
@@ -36,13 +35,36 @@ transform = transforms.Compose([
 def extract_vector(img_path):
     img = Image.open(img_path).convert("RGB")
     tensor = transform(img).unsqueeze(0)
+
     with torch.no_grad():
-        vector = feature_extractor(tensor).squeeze().numpy()
-    return vector.reshape(1, -1)
+        vector = feature_extractor(tensor).squeeze().numpy().reshape(1, -1)
+
+    vector /= np.linalg.norm(vector)
+    return vector.astype(np.float32)
 
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/dashboard')
+def dashboard():
+    return render_template('dashboard.html')
+
+@app.route('/about')
+def about():
+    return render_template('about.html')  # You need to create templates/about.html
+
+@app.route('/settings')
+def settings():
+    return render_template('settings.html')  # You need to create templates/settings.html
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    return render_template('register.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    return render_template('login.html')
 
 @app.route('/upload', methods=['POST'])
 def upload_image():
@@ -59,15 +81,15 @@ def upload_image():
 
     query_vector = extract_vector(file_path)
 
-    best_match = None
     best_match_image = None
     highest_score = -1
 
-    for root, dirs, files in os.walk(VECTOR_DB_PATH):
+    for root, _, files in os.walk(VECTOR_DB_PATH):
         for file in files:
             if file.endswith(".npy"):
                 vector_path = os.path.join(root, file)
-                db_vector = np.load(vector_path).reshape(1, -1)
+                db_vector = np.load(vector_path).astype(np.float32).reshape(1, -1)
+
                 score = cosine_similarity(query_vector, db_vector)[0][0]
 
                 if score > highest_score:
