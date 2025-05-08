@@ -1,20 +1,89 @@
-   /* Base Reset */
-   * {
+/* ===== Base Reset & Typography ===== */
+* {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Segoe UI', sans-serif;
-}
-
-body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+  }
+  
+  body {
     background: #f2f4f8;
-    height: 100vh;
+    min-height: 100vh;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+  }
+  
+  /* ===== Navbar ===== */
+  .navbar {
+    background-color: #333;
+    padding: 10px 20px;
+    display: flex;
     align-items: center;
-}
-
-.upload-container {
+    justify-content: space-between;
+    position: relative;
+  }
+  
+  .navbar .logo {
+    color: #fff;
+    font-size: 1.5rem;
+  }
+  
+  .navbar .nav-links {
+    list-style: none;
+    display: flex;
+    gap: 20px;
+  }
+  
+  .navbar .nav-links li a {
+    color: white;
+    text-decoration: none;
+    padding: 8px;
+  }
+  
+  .navbar .nav-links li a:hover {
+    background-color: #575757;
+    border-radius: 4px;
+  }
+  
+  .menu-toggle {
+    display: none;
+  }
+  
+  .hamburger {
+    display: none;
+    font-size: 1.5rem;
+    color: white;
+    cursor: pointer;
+  }
+  
+  /* Responsive */
+  @media (max-width: 768px) {
+    .hamburger {
+      display: block;
+    }
+  
+    .nav-links {
+      display: none;
+      flex-direction: column;
+      background-color: #333;
+      position: absolute;
+      top: 60px;
+      right: 0;
+      width: 100%;
+    }
+  
+    .menu-toggle:checked + .hamburger + .nav-links {
+      display: flex;
+    }
+  
+    .nav-links li {
+      text-align: center;
+      padding: 10px 0;
+    }
+  }
+  
+  /* ===== Upload Container ===== */
+  .upload-container {
     background: #ffffff;
     padding: 40px;
     border-radius: 20px;
@@ -22,15 +91,16 @@ body {
     text-align: center;
     width: 90%;
     max-width: 400px;
-}
-
-h1 {
+    margin: 40px auto;
+  }
+  
+  .upload-container h1 {
     margin-bottom: 20px;
     font-size: 24px;
     color: #333;
-}
-
-input[type="file"] {
+  }
+  
+  input[type="file"] {
     display: block;
     margin: 20px auto;
     padding: 10px;
@@ -39,9 +109,9 @@ input[type="file"] {
     width: 100%;
     cursor: pointer;
     background: #fafafa;
-}
-
-button {
+  }
+  
+  button {
     background: #4a90e2;
     color: white;
     border: none;
@@ -51,8 +121,112 @@ button {
     cursor: pointer;
     transition: background 0.3s ease;
     box-shadow: 0 5px 10px rgba(74, 144, 226, 0.2);
+  }
+  
+  button:hover {
+    background: #357ABD;
+  }
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    display: flex;
 }
 
-button:hover {
-    background: #357ABD;
+.sidebar {
+    width: 220px;
+    background-color: #2c3e50;
+    color: white;
+    height: 100vh;
+    padding-top: 20px;
+    box-sizing: border-box;
 }
+
+.sidebar a {
+    display: block;
+    color: white;
+    padding: 15px 20px;
+    text-decoration: none;
+}
+
+.sidebar a:hover {
+    background-color: #34495e;
+}
+
+.main-content {
+    flex-grow: 1;
+    padding: 40px;
+    background-color: #f4f4f4;
+}
+.container {
+    display: flex;
+    flex-direction: row;
+}
+.side-content {
+    width: 100%;
+}
+/* ===== Auth Pages (Login & Register) ===== */
+.auth-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - 60px); /* Adjust if navbar height differs */
+    background-color: #f2f4f8;
+    padding: 40px 20px;
+    width: 100%;
+  }
+  
+  .auth-box {
+    background: #fff;
+    padding: 40px 30px;
+    border-radius: 16px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+    
+  }
+  
+  .auth-box h2 {
+    margin-bottom: 24px;
+    color: #333;
+  }
+  
+  .auth-box form input {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 16px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+  }
+  
+  .auth-box button {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    border-radius: 12px;
+    background: #4a90e2;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: background 0.3s ease;
+  }
+  
+  .auth-box button:hover {
+    background: #357ABD;
+  }
+  
+  .auth-message {
+    margin-top: 20px;
+    font-size: 14px;
+  }
+  
+  .auth-message a {
+    color: #4a90e2;
+    text-decoration: none;
+  }
+  
+  .auth-message a:hover {
+    text-decoration: underline;
+  }
+  

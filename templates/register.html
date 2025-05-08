@@ -1,9 +1,18 @@
-<!-- templates/login.html -->
-<!DOCTYPE html>
-<html>
-<head><title>Register</title></head>
-<body>
-    <h1>Register Page</h1>
-    <!-- Add your form here -->
-</body>
-</html>
+<!-- templates/register.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="auth-wrapper">
+  <div class="auth-box">
+    <h2>Register</h2>
+    <form action="/register" method="POST">
+      <input type="text" name="username" placeholder="Username" required>
+      <input type="email" name="email" placeholder="Email" required>
+      <input type="password" name="password" placeholder="Password" required>
+      <input type="password" name="confirm_password" placeholder="Confirm Password" required>
+      <button type="submit">Register</button>
+    </form>
+    <p class="auth-message">Already have an account? <a href="/login">Login here</a></p>
+  </div>
+</div>
+{% endblock %}
