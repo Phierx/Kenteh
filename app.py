@@ -1,5 +1,8 @@
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, render_template, send_from_directory, redirect, url_for, flash, session
 from werkzeug.utils import secure_filename
+from flask_mysqldb import MySQL
+from auth import auth_bp, mysql
+
 import os
 import torch
 import torchvision.models as models
@@ -10,6 +13,21 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 # Flask setup
 app = Flask(__name__)
+
+# Secret key for session management (flash, login, etc.)
+app.secret_key = 'your-super-secret-key'  # Replace with a strong secret key
+
+# MySQL configuration (adjust based on your phpMyAdmin settings)
+app.config['MYSQL_HOST'] = 'localhost'
+app.config['MYSQL_USER'] = 'root'
+app.config['MYSQL_PASSWORD'] = ''  # Leave empty if no password is set
+app.config['MYSQL_DB'] = 'kenteh_db'  # Make sure this DB exists in phpMyAdmin
+
+# Initialize MySQL with app
+mysql.init_app(app)
+
+# Register Blueprint
+app.register_blueprint(auth_bp)
 
 # Paths
 UPLOAD_FOLDER = 'uploads'
@@ -48,7 +66,16 @@ def index():
 
 @app.route('/dashboard')
 def dashboard():
-    return render_template('dashboard.html')
+    firstname = session.get('firstname') or 'User'  # fallback if session is missing
+    return render_template('dashboard.html', firstname=firstname)
+
+@app.route('/users')
+def users():
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT * FROM UsersProfile")
+    users = cur.fetchall()
+    cur.close()
+    return str(users)
 
 @app.route('/about')
 def about():
@@ -60,10 +87,40 @@ def settings():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    if request.method == 'POST':
+        username = request.form['username']
+        email = request.form['email']
+        password = request.form['password']
+
+        cur = mysql.connection.cursor()
+        cur.execute("INSERT INTO UsersProfile (username, email, password) VALUES (%s, %s, %s)", (username, email, password))
+        mysql.connection.commit()
+        cur.close()
+
+        flash('Registration successful! Please log in.', 'success')
+        return redirect(url_for('login'))
+
     return render_template('register.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT * FROM UsersProfile WHERE email = %s AND password = %s", (email, password))
+        user = cur.fetchone()
+        cur.close()
+
+        if user:
+            session['user_id'] = user[0]
+            session['username'] = user[1]
+            flash(f"Welcome back, {user[1]}!", 'success')
+            return redirect(url_for('dashboard'))
+        else:
+            flash('Invalid email or password.', 'danger')
+
     return render_template('login.html')
 
 @app.route('/upload', methods=['POST'])
@@ -104,6 +161,25 @@ def upload_image():
         return render_template("result.html", image_url=image_url, score=round(highest_score, 4))
 
     return jsonify({"error": "No match found"}), 404
+
+@app.route('/business_profile', methods=['POST'])
+def save_business_profile():
+    business_name = request.form['business_name']
+    phone = request.form['phone']
+    address = request.form['address']
+    description = request.form['description']
+    user_id = session.get('user_id')
+
+    cur = mysql.connection.cursor()
+    cur.execute("""
+        INSERT INTO BusinessProfile (UserID, BusinessName, Phone, Address, Description)
+        VALUES (%s, %s, %s, %s, %s)
+    """, (user_id, business_name, phone, address, description))
+    mysql.connection.commit()
+    cur.close()
+
+    flash('Business profile saved successfully!', 'success')
+    return redirect(url_for('dashboard'))
 
 @app.route('/matched/<path:filename>')
 def serve_matched_image(filename):
