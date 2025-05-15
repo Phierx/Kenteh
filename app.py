@@ -67,7 +67,8 @@ def index():
 @app.route('/dashboard')
 def dashboard():
     firstname = session.get('firstname') or 'User'  # fallback if session is missing
-    return render_template('dashboard.html', firstname=firstname)
+    user_id = session.get('user_ID')
+    return render_template('dashboard.html', firstname=firstname,user_id=user_id)
 
 @app.route('/users')
 def users():
@@ -76,6 +77,7 @@ def users():
     users = cur.fetchall()
     cur.close()
     return str(users)
+
 
 @app.route('/about')
 def about():
@@ -122,6 +124,51 @@ def login():
             flash('Invalid email or password.', 'danger')
 
     return render_template('login.html')
+
+@app.route('/gallery/upload', methods=['GET', 'POST'])
+def gallery_upload():
+    if request.method == 'POST':
+        user_id = session.get('user_id')  # ✅ get from session
+        firstname = session.get('username')
+        item_name = request.form['item_name']
+        images = request.files.getlist('images')
+
+        if not user_id or not item_name or not images:
+            flash("Missing required fields", "error")
+            return redirect(request.url)
+
+        user_gallery_path = os.path.join(app.root_path, 'static', 'user_data', str(user_id), 'gallery', item_name)
+        os.makedirs(user_gallery_path, exist_ok=True)
+
+        for image in images:
+            if image and image.filename:
+                filename = secure_filename(image.filename)
+                saved_path = os.path.join(user_gallery_path, filename)
+                image.save(saved_path)
+
+                # Save metadata to the database
+                cur = mysql.connection.cursor()
+                cur.execute("""
+                    INSERT INTO imagedb (UserID, Title, Description, ImagePath, ActiveSearch)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (
+                    user_id,
+                    item_name,
+                    f"Gallery upload for {item_name}",  # You can customize this
+                    saved_path.replace("\\", "/"),       # normalize Windows path slashes
+                    1  # ActiveSearch = True
+                ))
+                mysql.connection.commit()
+                cur.close()
+
+        flash("Images uploaded to your gallery successfully!", "success")
+        return redirect(url_for('dashboard'))
+
+    return render_template("upload_form.html",
+                           user_id=session.get("user_id"),
+                           firstname=session.get("username"))
+
+
 
 @app.route('/upload', methods=['POST'])
 def upload_image():

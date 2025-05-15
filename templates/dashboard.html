@@ -7,8 +7,8 @@
     <!-- Sidebar -->
     <div class="sidebar">
         <h2>Hi, {{ firstname }}</h2>
-        <a href="#" onclick="showSection('upload-section')">My Wax</a>
-        <a href="#" onclick="showSection('search-section')">My Search</a>
+        <a href="#" onclick="showSection('search-section')">Search</a>
+        <a href="#" onclick="showSection('upload-section')">My Wax</a>  
         <a href="#" onclick="showSection('active-search-section')">Active Search</a>
         <a href="#" onclick="showSection('business-profile-section')">Business Profile</a>
         <a href="#" onclick="showSection('message-section')">Message</a>
@@ -19,19 +19,16 @@
     <div class="side-content">
         <div class="auth-wrapper">
 
+            <!-- Search Section -->
+            
+
             <!-- Upload Section -->
-            <div class="auth-box section" id="upload-section">
-                <h2>Upload an Image</h2>
+            <div class="auth-box section" id="search-section" style="display: none;">
+                <h2>Search Image</h2>
                 <form action="/upload" method="post" enctype="multipart/form-data">
                     <input type="file" name="image" required>
                     <button type="submit">Upload</button>
                 </form>
-            </div>
-
-            <!-- Search Section -->
-            <div class="auth-box section" id="search-section" style="display: none;">
-                <h2>Search</h2>
-                <p>Search functionality coming soon...</p>
             </div>
 
             <!-- Active Search Section -->
@@ -58,13 +55,14 @@
                 <h2>Messages</h2>
                 <p>Your messages will appear here...</p>
             </div>
-
+            
+             {% include "gallery.html" %}
             <!-- Settings Section -->
             <div class="auth-box section" id="settings-section" style="display: none;">
                 <h2>Settings</h2>
                 <p>Settings options coming soon...</p>
             </div>
-
+            
         </div>
     </div>
 </div>
