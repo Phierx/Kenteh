@@ -1,5 +1,8 @@
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, render_template, send_from_directory, redirect, url_for, flash, session
 from werkzeug.utils import secure_filename
+from flask_mysqldb import MySQL
+from auth import auth_bp, mysql
+
 import os
 import torch
 import torchvision.models as models
@@ -7,10 +10,24 @@ import torchvision.transforms as transforms
 from PIL import Image
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
-from torchvision.models import ResNet50_Weights
 
 # Flask setup
 app = Flask(__name__)
+
+# Secret key for session management (flash, login, etc.)
+app.secret_key = 'your-super-secret-key'  # Replace with a strong secret key
+
+# MySQL configuration (adjust based on your phpMyAdmin settings)
+app.config['MYSQL_HOST'] = 'localhost'
+app.config['MYSQL_USER'] = 'root'
+app.config['MYSQL_PASSWORD'] = ''  # Leave empty if no password is set
+app.config['MYSQL_DB'] = 'kenteh_db'  # Make sure this DB exists in phpMyAdmin
+
+# Initialize MySQL with app
+mysql.init_app(app)
+
+# Register Blueprint
+app.register_blueprint(auth_bp)
 
 # Paths
 UPLOAD_FOLDER = 'uploads'
@@ -21,7 +38,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Load ResNet model and prepare feature extractor
-resnet = models.resnet50(weights=ResNet50_Weights.DEFAULT)
+resnet = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
 resnet.eval()
 feature_extractor = torch.nn.Sequential(*list(resnet.children())[:-1])
 
@@ -36,13 +53,75 @@ transform = transforms.Compose([
 def extract_vector(img_path):
     img = Image.open(img_path).convert("RGB")
     tensor = transform(img).unsqueeze(0)
+
     with torch.no_grad():
-        vector = feature_extractor(tensor).squeeze().numpy()
-    return vector.reshape(1, -1)
+        vector = feature_extractor(tensor).squeeze().numpy().reshape(1, -1)
+
+    vector /= np.linalg.norm(vector)
+    return vector.astype(np.float32)
 
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/dashboard')
+def dashboard():
+    firstname = session.get('firstname') or 'User'  # fallback if session is missing
+    return render_template('dashboard.html', firstname=firstname)
+
+@app.route('/users')
+def users():
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT * FROM UsersProfile")
+    users = cur.fetchall()
+    cur.close()
+    return str(users)
+
+@app.route('/about')
+def about():
+    return render_template('about.html')  # You need to create templates/about.html
+
+@app.route('/settings')
+def settings():
+    return render_template('settings.html')  # You need to create templates/settings.html
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form['username']
+        email = request.form['email']
+        password = request.form['password']
+
+        cur = mysql.connection.cursor()
+        cur.execute("INSERT INTO UsersProfile (username, email, password) VALUES (%s, %s, %s)", (username, email, password))
+        mysql.connection.commit()
+        cur.close()
+
+        flash('Registration successful! Please log in.', 'success')
+        return redirect(url_for('login'))
+
+    return render_template('register.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT * FROM UsersProfile WHERE email = %s AND password = %s", (email, password))
+        user = cur.fetchone()
+        cur.close()
+
+        if user:
+            session['user_id'] = user[0]
+            session['username'] = user[1]
+            flash(f"Welcome back, {user[1]}!", 'success')
+            return redirect(url_for('dashboard'))
+        else:
+            flash('Invalid email or password.', 'danger')
+
+    return render_template('login.html')
 
 @app.route('/upload', methods=['POST'])
 def upload_image():
@@ -59,15 +138,15 @@ def upload_image():
 
     query_vector = extract_vector(file_path)
 
-    best_match = None
     best_match_image = None
     highest_score = -1
 
-    for root, dirs, files in os.walk(VECTOR_DB_PATH):
+    for root, _, files in os.walk(VECTOR_DB_PATH):
         for file in files:
             if file.endswith(".npy"):
                 vector_path = os.path.join(root, file)
-                db_vector = np.load(vector_path).reshape(1, -1)
+                db_vector = np.load(vector_path).astype(np.float32).reshape(1, -1)
+
                 score = cosine_similarity(query_vector, db_vector)[0][0]
 
                 if score > highest_score:
@@ -82,6 +161,25 @@ def upload_image():
         return render_template("result.html", image_url=image_url, score=round(highest_score, 4))
 
     return jsonify({"error": "No match found"}), 404
+
+@app.route('/business_profile', methods=['POST'])
+def save_business_profile():
+    business_name = request.form['business_name']
+    phone = request.form['phone']
+    address = request.form['address']
+    description = request.form['description']
+    user_id = session.get('user_id')
+
+    cur = mysql.connection.cursor()
+    cur.execute("""
+        INSERT INTO BusinessProfile (UserID, BusinessName, Phone, Address, Description)
+        VALUES (%s, %s, %s, %s, %s)
+    """, (user_id, business_name, phone, address, description))
+    mysql.connection.commit()
+    cur.close()
+
+    flash('Business profile saved successfully!', 'success')
+    return redirect(url_for('dashboard'))
 
 @app.route('/matched/<path:filename>')
 def serve_matched_image(filename):
